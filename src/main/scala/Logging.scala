@@ -67,9 +67,9 @@ object logging {
      *  @param logLevel        the threshold at and above which messages
      *                         sent to this log will be written. The higher
      *                         the value of `logLevel`, the '''less transmissive'''
-     *                         the logger is. In particular, the level `OFF`
-     *                         (the highest integer)
-     *                         suppresses transmission of all messages, and
+     *                         the logger is. In particular, the levels `OFF`
+     *                         (the highest integer) and `UNDEF` (`OFF-1`)
+     *                         suppress transmission of all messages, and
      *                         the level `ALL` enables transmission of all messages.
      *
      * @param writeMessage     the function used to write messages: this can be reassigned
@@ -146,10 +146,11 @@ object logging {
       def level_=(newLevel: Int): Unit = {
         _level = newLevel
         sys.props.put(s"$logName.level", levelName(newLevel))
-        for { h <- host } h.logging = newLevel != OFF
       }
 
-      def level: Int = _level
+      @inline def level: Int = _level
+
+      @inline def loggingLevel(messageLevel: Int): Boolean =  _level <= messageLevel
 
       override def toString: String =
         s"Logger($logName, ${levelName(level)}, ${host.getOrElse(None).getClass.getName})"
@@ -291,7 +292,8 @@ object logging {
           theLog
       }
 
-    /** `Loggable` is a convenience trait to support efficient use of
+
+  /** `Loggable` is a convenience trait to support efficient use of
      * logging from outside an object whose logging calls
      * are written idiomatically as (for example)
      *
@@ -306,7 +308,7 @@ object logging {
      * whose initial level is by default `WARN` but can be specified by a system
      * property
      * {{{    KLARSE.level}}}
-     * at the serveWith of  the `scala` run of the program.
+     * at the start of  the `scala` run of the program.
      *
      * The class itself should
      * {{{    import KLARSE._}}}
@@ -406,22 +408,18 @@ object logging {
         toLogLevel(sys.props.getOrElse(classKey, "UNSET"))
 
       /** Set the level of the log associated with this class */
-      def level_=(newLevel: Int): Unit = { log.level = newLevel; INVARIANT() }
+      def level_=(newLevel: Int): Unit = { log.level = newLevel }
 
       /** The level of the log associated with this class */
-      def level: Int = log.level
+      @inline def level: Int = log.level
 
-      /**  Are we logging on this log. Ideally this would be
-       *  a function derived as shown: but my intuition
-       *  tells me that this could be expensive. So once
-       *  the log has been associated with its host object
-       *  we establish the ''invariant''
-       *  {{{ logging == log.level != OFF }}}
+      @inline def loggingLevel(messageLevel: Int): Boolean = log.loggingLevel(messageLevel)
+
+      /**
+       * Are we logging on this log.
        */
-      var logging = false // eventually invariantly = log.level != Logger.OFF
+      @inline def logging: Boolean =   log.level < UNSET
 
-      /** Establish the invariant: `logging == log.level != OFF` */
-      private def INVARIANT(): Unit = logging = log.level != OFF
 
       /** The logger associated with this class or object.
        *
