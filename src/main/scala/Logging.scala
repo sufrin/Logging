@@ -1,5 +1,6 @@
 package org.sufrin
 
+
 /**
  * Simple logging facilities.
  */
@@ -95,42 +96,42 @@ object logging {
                   logName: String,
                   logLevel: Int,
                   var writeMessage: LogMessage => Unit,
-                  var host: Option[Loggable] = None
+                  var host: Option[LogHost] = None
                 ) {
 
       @inline def writeLog(level: Int, logName: String, message: String): Unit =
         writeMessage(LogMessage(level, logName, message))
 
       /** send a message to this log at level `FINEST` */
-      def finest(message: => String): Unit =
+      @inline def finest(message: => String): Unit =
         if (level <= FINEST) writeLog(FINEST, logName, message)
 
       /** send a message to this log at level `FINER` */
-      def finer(message: => String): Unit =
+      @inline def finer(message: => String): Unit =
         if (level <= FINER) writeLog(FINER, logName, message)
 
       /** send a message to this log at level `FINE` */
-      def fine(message: => String): Unit =
+      @inline def fine(message: => String): Unit =
         if (level <= FINE) writeLog(FINE, logName, message)
 
       /** send a message to this log at level `INFO` */
-      def info(message: => String): Unit =
+      @inline def info(message: => String): Unit =
         if (level <= INFO) writeLog(INFO, logName, message)
 
       /** send a message to this log at level `WARN` */
-      def warn(message: => String): Unit =
+      @inline def warn(message: => String): Unit =
         if (level <= WARN) writeLog(WARN, logName, message)
 
       /** send a message to this log at level `ERROR` */
-      def error(message: => String): Unit =
+      @inline def error(message: => String): Unit =
         if (level <= ERROR) writeLog(ERROR, logName, message)
 
       /** send a message to this log at level `FATAL` */
-      def fatal(message: => String): Unit =
+      @inline def fatal(message: => String): Unit =
         if (level <= FATAL) writeLog(FATAL, logName, message)
 
       /** send a message to this log at level `level` */
-      def log(messageLevel: => Int, message: => String): Unit =
+      @inline def log(messageLevel: => Int, message: => String): Unit =
         if (level <= messageLevel) writeLog(messageLevel, logName, message)
 
       private var _level: Int = _
@@ -263,7 +264,7 @@ object logging {
                 logName: String = "",
                 logLevel: Int = WARN,
                 writeLog: LogMessage => Unit = defaultWriteLogMessage,
-                host: Option[Loggable] = None
+                host: Option[LogHost] = None
               ): Logger = logTable.get(logName) match {
       case None =>
         val theLog = new Logger(logName, logLevel, writeLog, host)
@@ -379,88 +380,131 @@ object logging {
      *   if (logging) trace(s"We are logging directly, using the default log")
      * }}}
      */
-    trait Loggable {
+  trait LogHost { thisHost: LogHost =>
 
-      /** The path name of this class: shorn of its
-       *   trailing '$' if it's a companion object,
-       *  and with internal '$' transformed into '.'.
-       *
-       *  This name can be overridden when a custom `className` is wanted.
-       *
-       *  @see LogTest
-       */
-      def className: String = {
-        val n = this.getClass.getName
-        (if (n.endsWith("$")) n.substring(0, n.length - 1) else n)
-          .replace('$', '.')
-      }
-
-      /** Key to the logging level of this class in `sys.props`.
-       *
-       * Its value is  `s"\${className}.level"`
-       */
-      val classKey = s"$className.level"
-
-      /** The initial logging level of this class, as specified
-       *  in `sys.props`, otherwise `UNSET`
-       */
-      val initialLevel: Int =
-        toLogLevel(sys.props.getOrElse(classKey, "UNSET"))
-
-      /** Set the level of the log associated with this class */
-      def level_=(newLevel: Int): Unit = { log.level = newLevel }
-
-      /** The level of the log associated with this class */
-      @inline def level: Int = log.level
-
-      @inline def loggingLevel(messageLevel: Int): Boolean = log.loggingLevel(messageLevel)
-
-      /**
-       * Are we logging on this log.
-       */
-      @inline def logging: Boolean =   log.level < UNSET
-
-
-      /** The logger associated with this class or object.
-       *
-       * '''NB''' until very recently (Dec 10 2021) it was not constructed
-       * until the first use of one of its methods; but that seemed (!) to cause
-       * difficulties in enabling logging of classes composed with
-       *  logged ''traits''.
-       * //TODO: Investigate
-       */
-      /*lazy*/
-      val log: Logger =
-        Logger(className, initialLevel, defaultWriteLogMessage, Some(this))
-
-      /** Invoke this method's namesake on the `log` */
-      def finest(message: => String): Unit = log.finest(message)
-
-      /** Invoke this method's namesake on the `log` */
-      def finer(message: => String): Unit = log.finer(message)
-
-      /** Invoke this method's namesake on the `log` */
-      def fine(message: => String): Unit = log.fine(message)
-
-      /** Invoke this method's namesake on the `log` */
-      def info(message: => String): Unit = log.info(message)
-
-      /** Invoke this method's namesake on the `log` */
-      def warn(message: => String): Unit = log.warn(message)
-
-      /** Invoke this method's namesake on the `log` */
-      def error(message: => String): Unit = log.error(message)
-
-      /** Invoke this method's namesake on the `log` */
-      def fatal(message: => String): Unit = log.fatal(message)
-
-      /** Invoke this method's namesake on the `log` */
-      def log(level: => Int, message: => String): Unit = log.log(level, message)
-
-      override def toString =
-        s"Loggable: $className initialLevel=$initialLevel, level=level, log=$log"
-
+    /** The path name of this class: shorn of its
+     * trailing '$' if it's a companion object,
+     * and with internal '$' transformed into '.'.
+     *
+     * This name can be overridden when a custom `className` is wanted.
+     *
+     * @see LogTest
+     */
+    def className: String = {
+      val n = this.getClass.getName
+      (if (n.endsWith("$")) n.substring(0, n.length - 1) else n)
+        .replace('$', '.')
     }
+
+    /** Key to the logging level of this class in `sys.props`.
+     *
+     * Its value is  `s"\${className}.level"`
+     */
+    val classKey = s"$className.level"
+
+    /** The initial logging level of this class, as specified
+     * in `sys.props`, otherwise `UNSET`
+     */
+    val initialLevel: Int =
+      toLogLevel(sys.props.getOrElse(classKey, "UNSET"))
+
+    /** Set the level of the log associated with this class */
+    def level_=(newLevel: Int): Unit = {
+      log.level = newLevel
+    }
+
+    /** The level of the log associated with this class */
+    @inline def level: Int = log.level
+
+    @inline def loggingLevel(messageLevel: Int): Boolean = log.loggingLevel(messageLevel)
+
+    /**
+     * Are we logging on this log.
+     */
+    @inline def logging: Boolean = log.level < UNSET
+
+    /** The logger associated with this class or object.
+     *
+     * '''NB''' until very recently (Dec 10 2021) it was not constructed
+     * until the first use of one of its methods; but that seemed (!) to cause
+     * difficulties in enabling logging of classes composed with
+     * logged ''traits''.
+     * //TODO: Investigate
+     */
+    /*lazy*/
+    val log: Logger =
+      Logger(className, initialLevel, defaultWriteLogMessage, Some(thisHost))
+  }
+
+  trait Loggable extends LogHost {
+    /** Invoke this method's namesake on the `log` */
+    @inline def finest(message: => String): Unit = log.finest(message)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def finer(message: => String): Unit = log.finer(message)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def fine(message: => String): Unit = log.fine(message)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def info(message: => String): Unit = log.info(message)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def warn(message: => String): Unit = log.warn(message)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def error(message: => String): Unit = log.error(message)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def fatal(message: => String): Unit = log.fatal(message)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def log(messageLevel: => Int, message: => String): Unit =
+      if (level <= messageLevel) log.writeLog(messageLevel, className, message)
+
+    override def toString =
+      s"Loggable: $className initialLevel=$initialLevel, level=level, log=$log"
+
+  }
+
+  /**
+   * Identical to Loggable, except that a logging messages are given as the source location
+   * (file and line number) of the logging method call.
+   */
+  trait SourceLoggable extends Loggable {
+    import org.sufrin.SourceLocation._
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def finest(message: => String)(implicit source: SourceLocation): Unit = slog(FINEST, message, source)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def finer(message: => String)(implicit source: SourceLocation): Unit = slog(FINER, message, source)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def fine(message: => String)(implicit source: SourceLocation): Unit = slog(FINE, message, source)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def info(message: => String)(implicit source: SourceLocation): Unit = slog(INFO, message, source)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def warn(message: => String)(implicit source: SourceLocation): Unit = slog(WARN, message, source)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def error(message: => String)(implicit source: SourceLocation): Unit = slog(ERROR, message, source)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def fatal(message: => String)(implicit source: SourceLocation): Unit = slog(FATAL, message, source)
+
+    /** Invoke this method's namesake on the `log` */
+    @inline def log(level: => Int, message: => String)(implicit source: SourceLocation): Unit = slog(level, message, source)
+
+    @inline def slog(messageLevel: => Int, message: => String, source: SourceLocation): Unit =
+      if (level <= messageLevel) log.writeLog(messageLevel, source.toString, message)
+
+    override def toString =
+      s"Loggable: $className initialLevel=$initialLevel, level=level, log=$log"
+
+  }
 
     /** The default `Loggable` object. It can be used with no preliminary
      *  rituals, in which case its level is taken to be `ALL`. Its level
