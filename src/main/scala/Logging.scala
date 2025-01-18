@@ -533,4 +533,11 @@ object logging {
         if (level == UNSET) level = ALL
       }
     }
+
+  object SourceDefault extends SourceLoggable {
+    override def className: String = "logging.SourceDefault"
+    locally {
+      if (level == UNSET) level = ALL
+    }
+  }
 }
