@@ -2,7 +2,7 @@
   <artifact type="jar" build-on-make="true" name="Logging">
     <output-path>$PROJECT_DIR$/out/Logging</output-path>
     <root id="archive" name="Logging.jar">
-      <element id="module-output" name="Logging" />
+      <element id="module-output" name="logging" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/SourceLocation.jar" path-in-jar="/" />
     </root>
   </artifact>
