@@ -1,7 +1,7 @@
 // Build and locally publish by: sbt publishLocal
 
 ThisBuild / version := "0.9.0"
-ThisBuild / scalaVersion := "2.13.14"
+ThisBuild / scalaVersion := "2.13.15"
 
 lazy val root = (project in file("."))
   .settings(
